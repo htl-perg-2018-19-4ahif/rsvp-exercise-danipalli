@@ -1,43 +1,45 @@
-import {CREATED, BAD_REQUEST, UNAUTHORIZED} from 'http-status-codes';
-import * as loki from 'lokijs';
-import * as express from 'express';
-import * as basic from 'express-basic-auth';
+import {CREATED, BAD_REQUEST, UNAUTHORIZED} from "http-status-codes";
+import * as loki from "lokijs";
+import * as express from "express";
+import * as basicAuth from "express-basic-auth";
 
-var app = express();
-app.use(express.json());
+let title = "Hacking council";
+let location = "Haag";
+let date: Date = new Date(Date.now());
 
-const adminFilter = basic({ users: { admin: 'P@ssw0rd!' }});
+const db = new loki("loki.json");
+let guests = db.addCollection('guests')
 
-const db = new loki(__dirname + '/db.dat', {autosave: true, autoload: true});
-let guests = db.getCollection('guests');
-if (!guests) {
-  guests = db.addCollection('guests');
-}
+let server = express();
 
-app.get('/guests', adminFilter, (req, res) => {
-  res.send(guests.find());
+const adminFilter = basicAuth({ users: { 'admin': 'root' } });
+
+const port = 8080;
+server.listen(port, function() {
+  console.log(`API is listening on port ${port}`);
 });
 
-app.get('/party', (req, res, next) => {
-  res.send({
-    title: 'Happy new year!',
-    location: 'At my home',
-    date: new Date(2017, 0, 1)
-  });
+server.get("/party", (request, response) => {
+    response.send({ title: title,
+                    location: location,
+                    date: date
+    });
 });
 
-app.post('/register', (req, res, next) => {
-  if (!req.body.firstName || !req.body.lastName) {
-    res.status(BAD_REQUEST).send('Missing mandatory member(s)');
-  } else {
-    const count = guests.count();
-    if (count < 10) {
-      const newDoc = guests.insert({firstName: req.body.firstName, lastName: req.body.lastName});
-      res.status(CREATED).send(newDoc);
-    } else {
-      res.status(UNAUTHORIZED).send('Sorry, max. number of guests already reached');
+server.get("/guests", adminFilter, (request, response) => {
+    response.send(guests.find());
+});
+
+server.get("/register", (request, response) => {
+    if(request.body.firstName && request.body.lastName){
+        if(guests.count() >= 10){
+            response.status(UNAUTHORIZED).send("Sorry too many users in party!");
+        }else{
+            guests.insert({firstName: request.body.firstName, lastName: request.body.lastName});
+            response.status(CREATED).send("Created User");
+        }
+    }else{
+        response.status(BAD_REQUEST).send("Missing a part of your name!")
     }
-  }
+    
 });
-
-app.listen(8080, () => console.log('API is listening'));
