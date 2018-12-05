@@ -11,8 +11,9 @@ const db = new loki("loki.json");
 let guests = db.addCollection('guests')
 
 let server = express();
+server.use(express.json())
 
-const adminFilter = basicAuth({ users: { 'admin': 'root' } });
+const adminFilter = basicAuth({ users: { 'admin': 'admin' } });
 
 const port = 8080;
 server.listen(port, function() {
@@ -30,7 +31,7 @@ server.get("/guests", adminFilter, (request, response) => {
     response.send(guests.find());
 });
 
-server.get("/register", (request, response) => {
+server.post("/register", (request, response) => {
     if(request.body.firstName && request.body.lastName){
         if(guests.count() >= 10){
             response.status(UNAUTHORIZED).send("Sorry too many users in party!");
